@@ -1,0 +1,283 @@
+{
+	"info": {
+		"_postman_id": "274be568-dcb8-45a5-8c61-111acb5238a5",
+		"name": "Simple-Wallet",
+		"schema": "https://schema.getpostman.com/json/collection/v2.0.0/collection.json",
+		"_exporter_id": "7825822"
+	},
+	"item": [
+		{
+			"name": "Balance Checkers",
+			"item": [
+				{
+					"name": "Wallet ETH balance",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": "{{host}}:{{port}}/balance_ether"
+					},
+					"response": []
+				},
+				{
+					"name": "Check allowance (ERC20)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{host}}:{{port}}/allowance?token=&owner=&spender=",
+							"host": [
+								"{{host}}"
+							],
+							"port": "{{port}}",
+							"path": [
+								"allowance"
+							],
+							"query": [
+								{
+									"key": "token",
+									"value": ""
+								},
+								{
+									"key": "owner",
+									"value": ""
+								},
+								{
+									"key": "spender",
+									"value": ""
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Wallet ERC20 tokens balance",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{host}}:{{port}}/balance_erc20?token=",
+							"host": [
+								"{{host}}"
+							],
+							"port": "{{port}}",
+							"path": [
+								"balance_erc20"
+							],
+							"query": [
+								{
+									"key": "token",
+									"value": ""
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Transfers",
+			"item": [
+				{
+					"name": "Deposite ERC20",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n  \"token\": \"\",\r\n  \"from\": [],\r\n  \"amounts\": []\r\n}\r\n",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": "{{host}}:{{port}}/deposit_erc20"
+					},
+					"response": [
+						{
+							"name": "Deposite ERC20",
+							"originalRequest": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n  \"token\": \"0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512\",\r\n  \"from\": [\"0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266\", \"0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266\"],\r\n  \"amounts\": [\"0x1\", \"0x2\"]\r\n}\r\n",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": "{{host}}:{{port}}/deposit_erc20"
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "plain",
+							"header": [
+								{
+									"key": "content-type",
+									"value": "text/plain; charset=utf-8"
+								},
+								{
+									"key": "content-length",
+									"value": "13"
+								},
+								{
+									"key": "date",
+									"value": "Thu, 01 Aug 2024 06:57:42 GMT"
+								}
+							],
+							"cookie": [],
+							"body": "0x3b2d…3558"
+						}
+					]
+				},
+				{
+					"name": "Deposit ETH",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n  \"from\": \"\",\r\n  \"amount\": \"\"\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": "{{host}}:{{port}}/deposit_ether"
+					},
+					"response": [
+						{
+							"name": "Deposit ETH",
+							"originalRequest": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n  \"from\": \"0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266\",\r\n  \"amount\": \"0x38e5\"\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": "{{host}}:{{port}}/deposit_ether"
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "plain",
+							"header": [
+								{
+									"key": "content-type",
+									"value": "text/plain; charset=utf-8"
+								},
+								{
+									"key": "content-length",
+									"value": "13"
+								},
+								{
+									"key": "date",
+									"value": "Thu, 01 Aug 2024 06:56:51 GMT"
+								}
+							],
+							"cookie": [],
+							"body": "0x67a3…2925"
+						}
+					]
+				},
+				{
+					"name": "Withdraw amounts ERC20",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"token\": \"\",\r\n    \"to\": [],\r\n    \"amounts\": []\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{host}}:{{port}}/withdraw_amounts_erc20",
+							"host": [
+								"{{host}}"
+							],
+							"port": "{{port}}",
+							"path": [
+								"withdraw_amounts_erc20"
+							],
+							"query": [
+								{
+									"key": "",
+									"value": null,
+									"disabled": true
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Withdraw amounts ETH",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"to\": [],\r\n    \"amounts\": []\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": "{{host}}:{{port}}/withdraw_amounts_ether"
+					},
+					"response": []
+				},
+				{
+					"name": "Withdraw percentages ERC20",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"token\": \"\",\r\n    \"to\": [],\r\n    \"percentages\": []\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": "{{host}}:{{port}}/withdraw_percentages_erc20"
+					},
+					"response": []
+				},
+				{
+					"name": "Withdraw percentages ETH",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"to\": [],\r\n    \"percentages\": []\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": "{{host}}:{{port}}/withdraw_percentages_ether"
+					},
+					"response": []
+				}
+			]
+		}
+	]
+}
