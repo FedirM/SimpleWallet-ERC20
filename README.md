@@ -4,9 +4,17 @@ This project demonstrates how to build and interact with a simple Ethereum smart
 
 ### Tech Stack
 
+Please check all dependencies are installed on your machine!
+
 - **Smart Contract**: Solidity, Foundry
-- **Blockchain Testnet**: Anvil (local Ethereum testnet)
 - **Backend**: Rust (Warp, Ethers-rs, Tokio)
+- **Blockchain Testnet**: any Ethereum testnet
+
+#### RESOURCES
+
+1. Foundry - Check this [tutorial](https://book.getfoundry.sh/getting-started/installation) to get Foundry with all needed deps.
+2. Rust - [official download](https://www.rust-lang.org/tools/install)
+3. Also you need to install solc [official download](https://docs.soliditylang.org/en/latest/installing-solidity.html)
 
 ## Project Structure
 
@@ -33,34 +41,28 @@ This project demonstrates how to build and interact with a simple Ethereum smart
 
 ```
 
-## Run Proces
+## Run Proces (DEV/TEST ONLY)
 
-1. Start Anvil: (start up local Ethereum testnet)
-
-```
-$> anvil --chain-id 137
-```
-
-2. Build smart contract: (new terminal in project dir)
+1. Build smart contract: (new terminal in project dir)
 
 ```
 $> cd ./smart-contracts && forge build
 ```
 
-3. Deploy smart contract to the testnet:
+2. Deploy smart contract to the testnet:
 
 ```
-$> forge script script/SimpleWallet.s.sol:SimpleWalletScript --chain-id 137 --rpc-url http://127.0.0.1:8545 --broadcast --private-key <Your_Private_Key>
+$> forge script script/SimpleWallet.s.sol:SimpleWalletScript --chain-id <Chain_ID> --rpc-url <RPC_URL> --broadcast --private-key <Your_Private_Key>
 
 ```
 
-4. You should create `.env` file inside project directory:
+3. You should create `.env` file inside project directory:
 
 ```
 TODO: Add example of .env file
 ```
 
-5. Run web-server: (new terminal in project dir)
+4. Run web-server: (new terminal in project dir)
 
 ```
 $> cd ./rest-api && cargo run
