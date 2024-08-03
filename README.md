@@ -27,17 +27,19 @@ Please check all dependencies are installed on your machine!
 │   │
 │   └── .env                            # Environment vars
 │
-└── smart-contracts
-    ├── ...
-    ├── script
-    │   └── SimpleWallet.s.sol          # Main script to broadcast SimpleWallet contract
-    │
-    ├── src
-    │   ├── DummyToken.sol              # openzeppelin ERC20 based token (mock for real tests)
-    │   └── SimpleWallet.sol            # SimpleWallet definition
-    │
-    └── test
-        └── SimpleWallet.t.sol          # Test for SimpleWallet basic functionallity
+├── smart-contracts
+│   ├── ...
+│   ├── script
+│   │   └── SimpleWallet.s.sol          # Main script to broadcast SimpleWallet contract
+│   │
+│   ├── src
+│   │   ├── DummyToken.sol              # openzeppelin ERC20 based token (mock for real tests)
+│   │   └── SimpleWallet.sol            # SimpleWallet definition
+│   │
+│   └── test
+│       └── SimpleWallet.t.sol          # Test for SimpleWallet basic functionallity
+│
+└─── Simple-Wallet.postman_collection   # Here you could find POSTMAN collection
 
 ```
 
