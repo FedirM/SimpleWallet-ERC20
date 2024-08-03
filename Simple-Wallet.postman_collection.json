@@ -19,6 +19,30 @@
 					"response": []
 				},
 				{
+					"name": "Wallet ERC20 tokens balance",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{host}}:{{port}}/balance_erc20?token=",
+							"host": [
+								"{{host}}"
+							],
+							"port": "{{port}}",
+							"path": [
+								"balance_erc20"
+							],
+							"query": [
+								{
+									"key": "token",
+									"value": ""
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
 					"name": "Check allowance (ERC20)",
 					"request": {
 						"method": "GET",
@@ -43,30 +67,6 @@
 								},
 								{
 									"key": "spender",
-									"value": ""
-								}
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Wallet ERC20 tokens balance",
-					"request": {
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{host}}:{{port}}/balance_erc20?token=",
-							"host": [
-								"{{host}}"
-							],
-							"port": "{{port}}",
-							"path": [
-								"balance_erc20"
-							],
-							"query": [
-								{
-									"key": "token",
 									"value": ""
 								}
 							]

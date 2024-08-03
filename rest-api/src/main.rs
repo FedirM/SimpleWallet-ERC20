@@ -10,42 +10,31 @@ mod contracts;
 use contracts::{SimpleWallet, ERC20};
 
 #[derive(Serialize, Deserialize)]
-struct DepositETHRequest {
-    from: String,
-    amount: U256,
+struct CollectETHRequest {
+    from: Vec<String>,
+    to: String,
+}
+
+#[derive(Serialize, Deserialize)]
+struct CollectERC20Request {
+    token: String,
+    from: Vec<String>,
+    to: String,
 }
 
 #[derive(Serialize, Deserialize)]
 struct WithdrawETHRequest {
     to: Vec<String>,
-    amounts: Vec<U256>,
+    amounts: Option<Vec<U256>>,
+    percentages: Option<Vec<u8>>,
 }
 
 #[derive(Serialize, Deserialize)]
-struct WithdrawETHPercentageRequest {
-    to: Vec<String>,
-    percentages: Vec<u8>,
-}
-
-#[derive(Serialize, Deserialize)]
-struct DepositRequest {
-    token: String,
-    from: Vec<String>,
-    amounts: Vec<U256>,
-}
-
-#[derive(Serialize, Deserialize)]
-struct WithdrawRequest {
+struct WithdrawERC20Request {
     token: String,
     to: Vec<String>,
-    amounts: Vec<U256>,
-}
-
-#[derive(Serialize, Deserialize)]
-struct WithdrawPercentageRequest {
-    token: String,
-    to: Vec<String>,
-    percentages: Vec<u8>,
+    amounts: Option<Vec<U256>>,
+    percentages: Option<Vec<u8>>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -84,6 +73,13 @@ async fn main() {
 
     let contract = Arc::new(SimpleWallet::new(contract_address, Arc::clone(&client)));
 
+    let deposit_eth_route = warp::post()
+        .and(warp::path("deposit_ether"))
+        .and(warp::body::json())
+        .and(with_contract(contract.clone()))
+        .and(with_client(client.clone()))
+        .and_then(deposit_ether_handler);
+
     let deposit_erc20_route = warp::post()
         .and(warp::path("deposit_erc20"))
         .and(warp::body::json())
@@ -91,19 +87,19 @@ async fn main() {
         .and(with_client(client.clone()))
         .and_then(deposit_erc20_handler);
 
-    let withdraw_amounts_erc20_route = warp::post()
-        .and(warp::path("withdraw_amounts_erc20"))
+    let withdraw_ether_route = warp::post()
+        .and(warp::path("withdraw_ether"))
         .and(warp::body::json())
         .and(with_contract(contract.clone()))
         .and(with_client(client.clone()))
-        .and_then(withdraw_amounts_erc20_handler);
+        .and_then(withdraw_ether_handler);
 
-    let withdraw_percentages_erc20_route = warp::post()
-        .and(warp::path("withdraw_percentages_erc20"))
+    let withdraw_erc20_route = warp::post()
+        .and(warp::path("withdraw_erc20"))
         .and(warp::body::json())
         .and(with_contract(contract.clone()))
         .and(with_client(client.clone()))
-        .and_then(withdraw_percentages_erc20_handler);
+        .and_then(withdraw_erc20_handler);
 
     let balance_erc20_route = warp::get()
         .and(warp::path("balance_erc20"))
@@ -118,27 +114,6 @@ async fn main() {
         .and(with_client(client.clone()))
         .and_then(balance_ether_handler);
 
-    let deposit_eth_route = warp::post()
-        .and(warp::path("deposit_ether"))
-        .and(warp::body::json())
-        .and(with_contract(contract.clone()))
-        .and(with_client(client.clone()))
-        .and_then(deposit_ether_handler);
-
-    let withdraw_amounts_ether_route = warp::post()
-        .and(warp::path("withdraw_amounts_ether"))
-        .and(warp::body::json())
-        .and(with_contract(contract.clone()))
-        .and(with_client(client.clone()))
-        .and_then(withdraw_amounts_ether_handler);
-
-    let withdraw_percentages_ether_route = warp::post()
-        .and(warp::path("withdraw_percentages_ether"))
-        .and(warp::body::json())
-        .and(with_contract(contract.clone()))
-        .and(with_client(client.clone()))
-        .and_then(withdraw_percentages_ether_handler);
-
     let allowance_route = warp::get()
         .and(warp::path("allowance"))
         .and(warp::query::<AllowanceRequest>())
@@ -146,11 +121,9 @@ async fn main() {
         .and_then(allowance_handler);
 
     let routes = deposit_erc20_route
-        .or(withdraw_amounts_erc20_route)
-        .or(withdraw_percentages_erc20_route)
         .or(deposit_eth_route)
-        .or(withdraw_amounts_ether_route)
-        .or(withdraw_percentages_ether_route)
+        .or(withdraw_erc20_route)
+        .or(withdraw_ether_route)
         .or(balance_erc20_route)
         .or(balance_ether_route)
         .or(allowance_route);
@@ -204,67 +177,36 @@ async fn allowance_handler(
 }
 
 async fn deposit_erc20_handler(
-    body: DepositRequest,
+    body: CollectERC20Request,
     contract: Arc<SimpleWallet<SignerMiddleware<Provider<Http>, LocalWallet>>>,
-    client: Arc<SignerMiddleware<Provider<Http>, LocalWallet>>,
+    _client: Arc<SignerMiddleware<Provider<Http>, LocalWallet>>,
 ) -> Result<impl Reply, Infallible> {
     let from: Result<Vec<Address>, _> = body.from.iter().map(|s| s.parse()).collect();
-
     let from = match from {
         Ok(addresses) => addresses,
         Err(e) => {
             let error_msg = format!("Error parsing addresses: {:?}", e);
             eprintln!("{}", error_msg);
-            return Ok(warp::reply::with_status(
-                error_msg,
-                StatusCode::INTERNAL_SERVER_ERROR,
-            ));
+            return Ok(warp::reply::with_status(error_msg, StatusCode::BAD_REQUEST));
         }
     };
 
-    let amounts: Vec<U256> = body.amounts.iter().cloned().collect();
+    let to = match body.to.parse::<Address>() {
+        Ok(address) => address,
+        Err(e) => {
+            let error_msg = format!("Error parsing addresses: {:?}", e);
+            eprintln!("{}", error_msg);
+            return Ok(warp::reply::with_status(error_msg, StatusCode::BAD_REQUEST));
+        }
+    };
 
     // Debug logs
     println!("Token: {}", body.token.clone());
     println!("From: {:?}", from);
-    println!("Amounts: {:?}", amounts);
-
-    for (addr, amount) in from.iter().zip(&amounts) {
-        match ERC20::new(
-            body.token.parse::<Address>().unwrap(),
-            Arc::new(client.provider()),
-        )
-        .allowance(*addr, contract.address())
-        .call()
-        .await
-        {
-            Ok(allowance) => {
-                println!(
-                    "Allowance \n\towner - {} \n\tspender - {} \n\tAmount: {:#?}",
-                    addr,
-                    contract.address(),
-                    allowance
-                );
-                if allowance < *amount {
-                    eprintln!("Insufficient allowance for address: {:?}", addr);
-                    return Ok(warp::reply::with_status(
-                        format!("Insufficient allowance for address: {:?}", addr),
-                        StatusCode::BAD_REQUEST,
-                    ));
-                }
-            }
-            Err(e) => {
-                eprintln!("Error checking allowance for address {:?}: {:?}", addr, e);
-                return Ok(warp::reply::with_status(
-                    format!("Error checking allowance for address {:?}: {:?}", addr, e),
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                ));
-            }
-        }
-    }
+    println!("Amounts: {:?}", to);
 
     match contract
-        .deposit(body.token.parse().unwrap(), from, amounts)
+        .collect_erc20(body.token.parse().unwrap(), from, to)
         .send()
         .await
     {
@@ -287,42 +229,43 @@ async fn deposit_erc20_handler(
 }
 
 async fn deposit_ether_handler(
-    body: DepositETHRequest,
+    body: CollectETHRequest,
     contract: Arc<SimpleWallet<SignerMiddleware<Provider<Http>, LocalWallet>>>,
-    client: Arc<SignerMiddleware<Provider<Http>, LocalWallet>>,
+    _client: Arc<SignerMiddleware<Provider<Http>, LocalWallet>>,
 ) -> Result<impl Reply, Infallible> {
-    let from: Address = match body.from.parse() {
-        Ok(value) => value,
-        Err(_e) => {
-            return Ok(warp::reply::with_status(
-                String::from("Internal Server Error"),
-                StatusCode::INTERNAL_SERVER_ERROR,
-            ));
+    let from: Result<Vec<Address>, _> = body.from.iter().map(|s| s.parse()).collect();
+    let from = match from {
+        Ok(addresses) => addresses,
+        Err(e) => {
+            let error_msg = format!("Error parsing addresses: {:?}", e);
+            eprintln!("{}", error_msg);
+            return Ok(warp::reply::with_status(error_msg, StatusCode::BAD_REQUEST));
         }
     };
 
-    let amount: U256 = body.amount;
-
-    let tx = TransactionRequest {
-        from: Some(from),
-        to: Some(ethers::types::NameOrAddress::Address(contract.address())),
-        value: Some(amount),
-        data: None,
-        nonce: None,
-        gas_price: None,
-        gas: None,
-        chain_id: None,
+    let to = match body.to.parse::<Address>() {
+        Ok(addr) => addr,
+        Err(e) => {
+            let error_msg = format!("Error parsing addresses: {:?}", e);
+            eprintln!("{}", error_msg);
+            return Ok(warp::reply::with_status(error_msg, StatusCode::BAD_REQUEST));
+        }
     };
 
-    match client.send_transaction(tx, None).await {
-        Ok(tx_hash) => {
-            let tx = tx_hash.await.unwrap();
-            let th = tx.unwrap().transaction_hash;
-            println!("Transaction hash: {:?}", &th);
-            Ok(warp::reply::with_status(th.to_string(), StatusCode::OK))
+    // Debug logs
+    println!("From: {:?}", from);
+    println!("To: {:?}", to);
+
+    match contract.collect_eth(from, to).send().await {
+        Ok(res) => {
+            let tx_receipt = res.await.unwrap();
+            Ok(warp::reply::with_status(
+                tx_receipt.unwrap().transaction_hash.to_string(),
+                StatusCode::OK,
+            ))
         }
         Err(e) => {
-            let error_msg = format!("Error sending transaction: {:?}", e);
+            let error_msg = format!("Error during deposit: {:?}", e);
             eprintln!("{}", error_msg);
             Ok(warp::reply::with_status(
                 error_msg,
@@ -332,11 +275,18 @@ async fn deposit_ether_handler(
     }
 }
 
-async fn withdraw_amounts_ether_handler(
+async fn withdraw_ether_handler(
     body: WithdrawETHRequest,
     contract: Arc<SimpleWallet<SignerMiddleware<Provider<Http>, LocalWallet>>>,
-    _client: Arc<SignerMiddleware<Provider<Http>, LocalWallet>>,
+    client: Arc<SignerMiddleware<Provider<Http>, LocalWallet>>,
 ) -> Result<impl Reply, Infallible> {
+    if body.amounts.is_none() && body.percentages.is_none() {
+        return Ok(warp::reply::with_status(
+            String::from("Wrong params! There should be 'amounts' or 'percentages' field!"),
+            StatusCode::BAD_REQUEST,
+        ));
+    }
+
     let to = body.to.iter().map(|s| s.parse()).collect();
     let to: Vec<Address> = match to {
         Ok(list) => list,
@@ -349,34 +299,55 @@ async fn withdraw_amounts_ether_handler(
         }
     };
 
-    let amounts: Vec<U256> = body.amounts.iter().cloned().collect();
+    let amounts: Vec<U256> = if let Some(amounts) = body.amounts {
+        let balance = get_eth_balance(Arc::clone(&client), contract.address())
+            .await
+            .unwrap();
+
+        let total = amounts
+            .clone()
+            .into_iter()
+            .reduce(|acc, v| acc + v)
+            .unwrap();
+
+        if balance < total {
+            return Ok(warp::reply::with_status(
+                String::from("Not enough ETH"),
+                StatusCode::BAD_REQUEST,
+            ));
+        }
+        amounts
+    } else {
+        if body
+            .percentages
+            .clone()
+            .unwrap()
+            .into_iter()
+            .reduce(|acc, val| acc + val)
+            .unwrap()
+            > 100
+        {
+            return Ok(warp::reply::with_status(
+                String::from("Wrong percentages value!"),
+                StatusCode::BAD_REQUEST,
+            ));
+        }
+        let total = get_eth_balance(Arc::clone(&client), contract.address())
+            .await
+            .unwrap();
+        body.percentages
+            .unwrap()
+            .into_iter()
+            .map(|p| (total * p) / 100)
+            .collect()
+    };
 
     println!(
         "Withdraw (amounts) ETH\n\t TO:{:?} \n\t AMOUNTS: {:?}",
         &to, &amounts
     );
 
-    let balance = _client
-        .provider()
-        .get_balance(contract.address(), None)
-        .await
-        .unwrap();
-
-    let total = amounts
-        .clone()
-        .into_iter()
-        .reduce(|acc, v| acc + v)
-        .unwrap();
-
-    println!("Balance: {:?}\nTotal: {:?}", balance, total);
-    if balance < total {
-        return Ok(warp::reply::with_status(
-            String::from("Not enough ETH"),
-            StatusCode::BAD_REQUEST,
-        ));
-    }
-
-    match contract.withdraw_eth_amounts(to, amounts).send().await {
+    match contract.withdraw_eth(to, amounts).send().await {
         Ok(res) => {
             let tx_receipt = res.await.unwrap();
             Ok(warp::reply::with_status(
@@ -401,42 +372,10 @@ async fn withdraw_amounts_ether_handler(
     }
 }
 
-async fn withdraw_percentages_ether_handler(
-    body: WithdrawETHPercentageRequest,
+async fn withdraw_erc20_handler(
+    body: WithdrawERC20Request,
     contract: Arc<SimpleWallet<SignerMiddleware<Provider<Http>, LocalWallet>>>,
-    _client: Arc<SignerMiddleware<Provider<Http>, LocalWallet>>,
-) -> Result<impl warp::Reply, Infallible> {
-    let to: Vec<Address> = body.to.iter().map(|s| s.parse().unwrap()).collect();
-    let percentages: Vec<u8> = body.percentages.iter().cloned().collect();
-
-    match contract
-        .withdraw_percentages(Address::default(), to, percentages)
-        .send()
-        .await
-    {
-        Ok(res) => {
-            let tx_receipt = res.await.unwrap();
-            Ok(warp::reply::with_status(
-                tx_receipt.unwrap().transaction_hash.to_string(),
-                StatusCode::OK,
-            ))
-        }
-        Err(e) => {
-            let error_msg = format!("Error during withdrawal: {:?}", e);
-            eprintln!("{}", &error_msg);
-
-            Ok(warp::reply::with_status(
-                error_msg,
-                StatusCode::INTERNAL_SERVER_ERROR,
-            ))
-        }
-    }
-}
-
-async fn withdraw_amounts_erc20_handler(
-    body: WithdrawRequest,
-    contract: Arc<SimpleWallet<SignerMiddleware<Provider<Http>, LocalWallet>>>,
-    _client: Arc<SignerMiddleware<Provider<Http>, LocalWallet>>,
+    client: Arc<SignerMiddleware<Provider<Http>, LocalWallet>>,
 ) -> Result<impl warp::Reply, Infallible> {
     let token = if let Ok(addr) = body.token.parse::<Address>() {
         addr
@@ -446,6 +385,13 @@ async fn withdraw_amounts_erc20_handler(
             StatusCode::BAD_REQUEST,
         ));
     };
+
+    if body.amounts.is_none() && body.percentages.is_none() {
+        return Ok(warp::reply::with_status(
+            String::from("Wrong params! There should be 'amounts' or 'percentages' field!"),
+            StatusCode::BAD_REQUEST,
+        ));
+    }
 
     let to = body.to.iter().map(|s| s.parse()).collect();
     let to: Vec<Address> = match to {
@@ -459,48 +405,55 @@ async fn withdraw_amounts_erc20_handler(
         }
     };
 
-    let amounts: Vec<U256> = body.amounts.iter().cloned().collect();
+    let amounts: Vec<U256> = if let Some(amounts) = body.amounts {
+        let balance = get_erc20_balance(Arc::clone(&client), token, contract.address())
+            .await
+            .unwrap();
+
+        let total = amounts
+            .clone()
+            .into_iter()
+            .reduce(|acc, v| acc + v)
+            .unwrap();
+
+        if balance < total {
+            return Ok(warp::reply::with_status(
+                String::from("Not enough tokens"),
+                StatusCode::BAD_REQUEST,
+            ));
+        }
+        amounts
+    } else {
+        if body
+            .percentages
+            .clone()
+            .unwrap()
+            .into_iter()
+            .reduce(|acc, val| acc + val)
+            .unwrap()
+            > 100
+        {
+            return Ok(warp::reply::with_status(
+                String::from("Wrong percentages value!"),
+                StatusCode::BAD_REQUEST,
+            ));
+        }
+        let total = get_eth_balance(Arc::clone(&client), contract.address())
+            .await
+            .unwrap();
+        body.percentages
+            .unwrap()
+            .into_iter()
+            .map(|p| (total * p) / 100)
+            .collect()
+    };
 
     println!(
-        "Withdraw amounts of ERC20 \n\t TOKEN: {:?} \n\t TO:{:?} \n\t AMOUNTS: {:?}",
-        token, to, amounts
+        "Withdraw (amounts) ETH\n\t TO:{:?} \n\t AMOUNTS: {:?}",
+        &to, &amounts
     );
 
-    println!("Contract owner: {:?}", contract.owner());
-    println!("Sender: {:?}", _client.address());
-
-    match contract.withdraw_amounts(token, to, amounts).send().await {
-        Ok(res) => {
-            let tx_receipt = res.await.unwrap();
-            Ok(warp::reply::with_status(
-                tx_receipt.unwrap().transaction_hash.to_string(),
-                StatusCode::OK,
-            ))
-        }
-        Err(e) => {
-            let error_msg = format!("Error during withdrawal: {:?}", e);
-            eprintln!("{}", error_msg);
-            Ok(warp::reply::with_status(
-                error_msg,
-                StatusCode::INTERNAL_SERVER_ERROR,
-            ))
-        }
-    }
-}
-
-async fn withdraw_percentages_erc20_handler(
-    body: WithdrawPercentageRequest,
-    contract: Arc<SimpleWallet<SignerMiddleware<Provider<Http>, LocalWallet>>>,
-    _client: Arc<SignerMiddleware<Provider<Http>, LocalWallet>>,
-) -> Result<impl warp::Reply, Infallible> {
-    let to: Vec<Address> = body.to.iter().map(|s| s.parse().unwrap()).collect();
-    let percentages: Vec<u8> = body.percentages.iter().cloned().collect();
-
-    match contract
-        .withdraw_percentages(body.token.parse().unwrap(), to, percentages)
-        .send()
-        .await
-    {
+    match contract.withdraw_erc20(token, to, amounts).send().await {
         Ok(res) => {
             let tx_receipt = res.await.unwrap();
             Ok(warp::reply::with_status(
@@ -527,9 +480,7 @@ async fn balance_erc20_handler(
     let token_address: Address = query.token.parse().expect("Invalid token address");
     let contract_address = contract.address();
 
-    let erc20_contract = ERC20::new(token_address, Arc::clone(&client));
-
-    match erc20_contract.balance_of(contract_address).call().await {
+    match get_erc20_balance(Arc::clone(&client), token_address, contract_address).await {
         Ok(balance) => {
             println!("ERC20 wallet balance: {}", &balance);
             Ok(warp::reply::with_status(
@@ -552,7 +503,8 @@ async fn balance_ether_handler(
     client: Arc<SignerMiddleware<Provider<Http>, LocalWallet>>,
 ) -> Result<impl Reply, Infallible> {
     let contract_address = contract.address();
-    match client.get_balance(contract_address, None).await {
+
+    match get_eth_balance(client, contract_address).await {
         Ok(balance) => {
             println!("ERC20 wallet balance: {}", &balance);
             Ok(warp::reply::with_status(
@@ -567,5 +519,29 @@ async fn balance_ether_handler(
                 StatusCode::INTERNAL_SERVER_ERROR,
             ))
         }
+    }
+}
+
+// Helpers
+
+async fn get_eth_balance(
+    client: Arc<SignerMiddleware<Provider<Http>, LocalWallet>>,
+    address: Address,
+) -> Result<U256, signer::SignerMiddlewareError<Provider<Http>, LocalWallet>> {
+    match client.get_balance(address, None).await {
+        Ok(balance) => Ok(balance),
+        Err(e) => Err(e),
+    }
+}
+
+async fn get_erc20_balance(
+    client: Arc<SignerMiddleware<Provider<Http>, LocalWallet>>,
+    token: Address,
+    account: Address,
+) -> Result<U256, ContractError<SignerMiddleware<Provider<Http>, LocalWallet>>> {
+    let erc20_contract = ERC20::new(token, client);
+    match erc20_contract.balance_of(account).call().await {
+        Ok(balance) => Ok(balance),
+        Err(e) => Err(e),
     }
 }
